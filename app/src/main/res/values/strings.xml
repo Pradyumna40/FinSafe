@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">FinSafe_QR</string>
+    <string name="scan_qr_code">Scan QR Code</string>
+    <string name="open_link">Open Link</string>
+    <string name="cancel">Cancel</string>
+    <string name="scan_result_will_appear_here">Scan result will appear here...</string>
+    <string name="finsafe_qr">FinSafe QR</string>
+    <string name="scan_qr">Scan QR Code</string>
+    <string name="scan_detect_stay_safe">Scan • Detect • Stay Safe</string>
+</resources>
