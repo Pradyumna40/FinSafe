@@ -111,45 +111,53 @@ public class MainActivity extends AppCompatActivity {
     private final androidx.activity.result.ActivityResultLauncher<ScanOptions> qrLauncher =
             registerForActivityResult(new ScanContract(), result -> {
                 if (result.getContents() != null) {
-                    String scannedData = result.getContents();
+                    String scannedData = result.getContents().trim();
 
+                    // 1️⃣ UPI QR
                     if (scannedData.startsWith("upi://pay")) {
-                        // ✅ Case 1: UPI QR
-                        txtResult.setText("" + parseUpiData(scannedData));
+                        txtResult.setText(parseUpiData(scannedData));
 
-                    } else if (scannedData.startsWith("http://") || scannedData.startsWith("https://")) {
-                        if (isSuspiciousLink(scannedData)) {
-                            txtResult.setText("⚠️Suspicious Link Detected\n" + scannedData);
-                            new AlertDialog.Builder(this)
-                                    .setTitle("Suspicious Link")
-                                    .setMessage("This link looks suspicious.\n\nDo you still want to open it?\n\n" + scannedData)
-                                    .setPositiveButton("Open Anyway", (d, w) -> {
-                                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(scannedData)));
-                                    })
-                                    .setNegativeButton("Cancel", (d, w) -> {
-                                        txtResult.setText("Link scan cancelled.");
-                                    })
-                                    .show();
-                        } else {
-                            txtResult.setText("✅Safe Link \n" + scannedData);
-                            new AlertDialog.Builder(this)
-                                    .setTitle("Open Link?")
-                                    .setMessage("✅Safe Link\nDo you want to open this link?\n\n" + scannedData)
-                                    .setPositiveButton("Open", (d, w) -> {
-                                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(scannedData)));
-                                    })
-                                    .setNegativeButton("Cancel", (d, w) -> {
-                                        txtResult.setText("Link scan cancelled.");
-                                    })
-                                    .show();
-                        }
-
-                    } else {
-                        txtResult.setText("Not a UPI QR \n\nData: " + scannedData);
                     }
+                    // 2️⃣ Looks like URL
+                    else if (looksLikeUrl(scannedData)) {
+                        boolean suspicious = isSuspiciousLink(scannedData);
+
+                        String message = (suspicious ? "⚠️ Suspicious Link!\n" : "✅ Safe Link\n") + scannedData;
+
+                        txtResult.setText(message);
+
+                        new AlertDialog.Builder(this)
+                                .setTitle(suspicious ? "Suspicious Link" : "Open Link?")
+                                .setMessage(message + "\n\nDo you want to open it?")
+                                .setPositiveButton("Open", (d, w) -> {
+                                    String urlToOpen = scannedData.startsWith("http") ? scannedData : "https://" + scannedData;
+                                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(urlToOpen)));
+                                })
+                                .setNegativeButton("Cancel", (d, w) -> txtResult.setText("Link scan cancelled."))
+                                .show();
+                    }
+                    // 3️⃣ Plain text / other data
+                    else {
+                        txtResult.setText("Scanned Text:\n\n" + scannedData);
+                    }
+                } else {
+                    txtResult.setText("Scan cancelled.");
                 }
             });
 
+    // Detect if string looks like a URL (even without http)
+    private boolean looksLikeUrl(String data) {
+        data = data.toLowerCase();
+        if (data.startsWith("http://") || data.startsWith("https://")) return true;
+        if (data.contains(".") && !data.contains(" ")) return true;
+
+        String[] shorteners = {"bit.ly","tinyurl.com","goo.gl","t.co"};
+        for(String s : shorteners){
+            if(data.contains(s)) return true;
+        }
+        return false;
+    }
+
+    // Suspicious URL rules
+   
 }
-
-
