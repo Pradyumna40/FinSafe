@@ -61,6 +61,36 @@
 
         </androidx.cardview.widget.CardView>
 
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            app:cardBackgroundColor="@color/white"
+            android:elevation="6dp"
+            app:cardCornerRadius="12dp">
+
+            <EditText
+                android:id="@+id/editLink"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/paste_link_here"
+                android:inputType="textUri"
+                android:padding="12dp"
+                android:textColor="@android:color/black"
+                android:background="@android:color/transparent" />
+
+        </androidx.cardview.widget.CardView>
+
+        <Button
+            android:id="@+id/btnCheckLink"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/check_link"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#1E88E5"
+            android:padding="12dp"
+            android:layout_marginTop="8dp"/>
+
     </LinearLayout>
 
 

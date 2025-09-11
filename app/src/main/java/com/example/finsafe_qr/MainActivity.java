@@ -1,20 +1,16 @@
 package com.example.finsafe_qr;
 
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 
-import com.google.zxing.common.HybridBinarizer;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.zxing.integration.android.IntentIntegrator;
-import com.google.zxing.integration.android.IntentResult;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanOptions;
 
@@ -23,6 +19,8 @@ public class MainActivity extends AppCompatActivity {
     Button btnScan;
     TextView txtResult;
 
+
+    @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,6 +29,8 @@ public class MainActivity extends AppCompatActivity {
 
         btnScan = findViewById(R.id.btnScan);
         txtResult = findViewById(R.id.txtResult);
+        Button btnCheckLink = findViewById(R.id.btnCheckLink);
+        EditText editLink = findViewById(R.id.editLink);
 
         btnScan.setOnClickListener(v -> {
             ScanOptions options = new ScanOptions();
@@ -45,6 +45,35 @@ public class MainActivity extends AppCompatActivity {
             options.addExtra("SCAN_INVERTED" , true);
             qrLauncher.launch(options);
         });
+        //check link button
+        btnCheckLink.setOnClickListener(v -> {
+            String url = editLink.getText().toString().trim();
+            if(url.isEmpty()) {
+                txtResult.setText("Please paste a link to check.");
+                return;
+            }
+
+            if(url.startsWith("upi://pay")) {
+                txtResult.setText(parseUpiData(url));
+            } else if(looksLikeUrl(url)) {
+                boolean suspicious = isSuspiciousLink(url);
+                String message = (suspicious ? "⚠️ Suspicious Link!\n" : "✅ Safe Link\n") + url;
+
+                txtResult.setText(message);
+                new AlertDialog.Builder(this)
+                        .setTitle(suspicious ? "Suspicious Link" : "Open Link?")
+                        .setMessage(message + "\n\nDo you want to open it?")
+                        .setPositiveButton("Open", (d, w) -> {
+                            String urlToOpen = url.startsWith("http") ? url : "https://" + url;
+                            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(urlToOpen)));
+                        })
+                        .setNegativeButton("Cancel", (d, w) -> txtResult.setText("Link check cancelled."))
+                        .show();
+            } else {
+                txtResult.setText("Not a valid UPI or web URL:\n" + url);
+            }
+        });
+
     }
 
 
@@ -100,10 +129,7 @@ public class MainActivity extends AppCompatActivity {
         if (url.length() > 100) return true;
 
         //4.
-        if (url.chars().filter(ch -> ch == '-').count() > 3) return true;
-
-
-        return false; //url is good
+        return url.chars().filter(ch -> ch == '-').count() > 3;//url is good
     }
 
 

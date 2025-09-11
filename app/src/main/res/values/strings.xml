@@ -7,4 +7,6 @@
     <string name="finsafe_qr">FinSafe QR</string>
     <string name="scan_qr">Scan QR Code</string>
     <string name="scan_detect_stay_safe">Scan • Detect • Stay Safe</string>
+    <string name="paste_link_here">Paste Link Here</string>
+    <string name="check_link">Check Link</string>
 </resources>
