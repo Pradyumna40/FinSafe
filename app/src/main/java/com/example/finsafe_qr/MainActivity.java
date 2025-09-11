@@ -117,20 +117,40 @@ public class MainActivity extends AppCompatActivity {
     private boolean isSuspiciousLink(String url) {
         url = url.toLowerCase();
 
-        //1 . Not using HTTPS
+        // 1. Not using HTTPS
         if (url.startsWith("http://")) return true;
 
-        //2. Suspicious domains
+        // 2. Suspicious domains
         if (url.contains(".tk") || url.contains(".xyz") || url.contains(".top") || url.contains(".zip"))
             return true;
 
-
-        //3. Long url
+        // 3. Long URL
         if (url.length() > 100) return true;
 
-        //4.
-        return url.chars().filter(ch -> ch == '-').count() > 3;//url is good
+        // 4. Too many hyphens
+        if (url.chars().filter(ch -> ch == '-').count() > 3) return true;
+
+        // 5. Numbers in domain
+        if (url.matches(".*[0-9].*")) return true;
+
+        // 6. Too many subdomains
+        if (url.split("\\.").length > 4) return true;
+
+        // 7. Suspicious keywords
+        String[] badWords = {"login", "verify", "secure", "bank", "password", "freegift"};
+        for (String word : badWords) {
+            if (url.contains(word)) return true;
+        }
+
+        // 8. URL encoding
+        if (url.contains("%")) return true;
+
+        // 9. @ symbol
+        if (url.contains("@")) return true;
+
+        return false; // URL looks safe
     }
+
 
 
     @SuppressLint("SetTextI18n")
