@@ -117,39 +117,52 @@ public class MainActivity extends AppCompatActivity {
     private boolean isSuspiciousLink(String url) {
         url = url.toLowerCase();
 
-        // 1. Not using HTTPS
-        if (url.startsWith("http://")) return true;
+        try {
+            Uri uri = Uri.parse(url);
+            String host = uri.getHost();
 
-        // 2. Suspicious domains
-        if (url.contains(".tk") || url.contains(".xyz") || url.contains(".top") || url.contains(".zip"))
-            return true;
+            if (host == null) return true; // invalid URL
 
-        // 3. Long URL
-        if (url.length() > 100) return true;
+            // 1. Not using HTTPS
+            if (url.startsWith("http://")) return true;
 
-        // 4. Too many hyphens
-        if (url.chars().filter(ch -> ch == '-').count() > 3) return true;
+            // 2. Suspicious / cheap TLDs
+            String[] badTlds = {".tk", ".xyz", ".top", ".zip", ".info", ".cf", ".ga", ".gq", ".ml"};
+            for (String tld : badTlds) {
+                if (host.endsWith(tld)) return true;
+            }
 
-        // 5. Numbers in domain
-        if (url.matches(".*[0-9].*")) return true;
+            // 3. Unusually long URL
+            if (url.length() > 150) return true;
 
-        // 6. Too many subdomains
-        if (url.split("\\.").length > 4) return true;
+            // 4. Too many hyphens in domain name
+            if (host.chars().filter(ch -> ch == '-').count() > 3) return true;
 
-        // 7. Suspicious keywords
-        String[] badWords = {"login", "verify", "secure", "bank", "password", "freegift"};
-        for (String word : badWords) {
-            if (url.contains(word)) return true;
+            // 5. IP address instead of domain
+            if (host.matches("\\d+\\.\\d+\\.\\d+\\.\\d+")) return true;
+
+            // 6. Suspicious keywords
+            String[] badWords = {"free", "login", "verify", "update", "secure", "banking", "gift", "win", "bonus"};
+            for (String word : badWords) {
+                if (url.contains(word)) return true;
+            }
+
+            // 7. Too many subdomains (like phishing.bankofindia.secure-login.com)
+            if (host.split("\\.").length > 4) return true;
+
+            // 8. URL encoding (often used in phishing)
+            if (url.contains("%")) return true;
+
+            // 9. @ symbol (phishers use it to hide real URL)
+            if (url.contains("@")) return true;
+
+        } catch (Exception e) {
+            return true; // if parsing fails, treat as suspicious
         }
 
-        // 8. URL encoding
-        if (url.contains("%")) return true;
-
-        // 9. @ symbol
-        if (url.contains("@")) return true;
-
-        return false; // URL looks safe
+        return false; // looks safe
     }
+
 
 
 
