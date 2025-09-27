@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -43,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
 
 
             options.addExtra("SCAN_INVERTED" , true);
+
             qrLauncher.launch(options);
         });
         //check link button
@@ -200,7 +202,8 @@ public class MainActivity extends AppCompatActivity {
                         txtResult.setText("Scanned Text:\n\n" + scannedData);
                     }
                 } else {
-                    txtResult.setText("Scan cancelled.");
+                    String failMessage = "⚠️ QR Scan Failed . Try scanning in light mode.";
+                    Toast.makeText(this,failMessage,Toast.LENGTH_LONG).show();
                 }
             });
 
