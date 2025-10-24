@@ -91,6 +91,15 @@
             android:padding="12dp"
             android:layout_marginTop="8dp"/>
 
+        <Button
+            android:id="@+id/btnOpenFraud"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Open Fraud Detector"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="#1E88E5"/>
+
+
     </LinearLayout>
 
 

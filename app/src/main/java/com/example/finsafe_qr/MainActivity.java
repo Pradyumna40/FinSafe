@@ -76,6 +76,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+Button btnFraud = findViewById(R.id.btnOpenFraud);
+btnFraud.setOnClickListener(v -> {
+    startActivity(new Intent(MainActivity.this, FraudWebActivity.class));
+
+});
+
     }
 
 
