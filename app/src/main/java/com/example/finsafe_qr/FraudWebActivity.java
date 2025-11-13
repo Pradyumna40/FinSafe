@@ -25,6 +25,6 @@ public class FraudWebActivity extends AppCompatActivity {
 
 
 
-        webView.loadUrl("https://finsafecc.streamlit.app/"); // replace with your actual URL
+        webView.loadUrl("https://creditcardfraud-finsafe.streamlit.app/"); // replace with your actual URL
     }
 }
