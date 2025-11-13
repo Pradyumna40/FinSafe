@@ -24,7 +24,7 @@ import java.util.Scanner;
 public class MainActivity extends AppCompatActivity {
 
     // ✅ Use 10.0.2.2 for emulator (points to your laptop)
-    private static final String BACKEND_BASE = "http://10.0.2.2:4000";
+    private static final String BACKEND_BASE = "https://finsafe.onrender.com";
 
     Button btnScan;
     TextView txtResult;
