@@ -23,7 +23,6 @@ import java.util.Scanner;
 
 public class MainActivity extends AppCompatActivity {
 
-    // ✅ Use 10.0.2.2 for emulator (points to your laptop)
     private static final String BACKEND_BASE = "https://finsafe.onrender.com";
 
     Button btnScan;
@@ -40,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
         Button btnCheckLink = findViewById(R.id.btnCheckLink);
         EditText editLink = findViewById(R.id.editLink);
 
-        // 🔍 Scan QR Button
+        // 🔍 QR Scan Button
         btnScan.setOnClickListener(v -> {
             ScanOptions options = new ScanOptions();
             options.setPrompt("Scan a QR Code");
@@ -51,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
             qrLauncher.launch(options);
         });
 
-        // 🔗 Manual link check
+        // 🔗 Manual Link Check
         btnCheckLink.setOnClickListener(v -> {
             String url = editLink.getText().toString().trim();
             if (url.isEmpty()) {
@@ -63,46 +62,55 @@ public class MainActivity extends AppCompatActivity {
                 txtResult.setText(parseUpiData(url));
             } else if (looksLikeUrl(url)) {
 
-                // 🧠 Combine rule-based + ML check
                 boolean ruleSuspicious = isSuspiciousLink(url);
                 double mlScore = MLClassifier.predictProbability(url);
-                boolean mlSuspicious = mlScore >= 0.5;  // Threshold can be tuned (0.6–0.8 safer)
+                boolean mlSuspicious = mlScore >= 0.5;
                 boolean suspicious = ruleSuspicious || mlSuspicious;
 
-                // ✅ Single message variable
                 String message = (suspicious ? "⚠️ Suspicious Link!\n" : "✅ Safe Link\n")
                         + url + "\n\nML Score: " + String.format("%.2f", mlScore);
 
                 txtResult.setText(message);
                 fetchReportCount(url);
 
-                new AlertDialog.Builder(this)
+                // ⚠️ FIXED → Report only for suspicious links
+                AlertDialog.Builder builder = new AlertDialog.Builder(this)
                         .setTitle(suspicious ? "Suspicious Link" : "Open Link?")
-                        .setMessage(message + "\n\nDo you want to open it?")
-                        .setPositiveButton("Open", (d, w) -> {
-                            String urlToOpen = url.startsWith("http") ? url : "https://" + url;
-                            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(urlToOpen)));
-                        })
-                        .setNeutralButton("Report", (d, w) -> {
-                            reportToServer(url);
-                            fetchReportCount(url);
-                        })
-                        .setNegativeButton("Cancel", (d, w) -> txtResult.setText("Link check cancelled."))
-                        .show();
+                        .setMessage(message + "\n\nDo you want to open it?");
+
+                // Always show OPEN
+                builder.setPositiveButton("Open", (d, w) -> {
+                    String urlToOpen = url.startsWith("http") ? url : "https://" + url;
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(urlToOpen)));
+                });
+
+                // REPORT only if dangerous
+                if (suspicious) {
+                    builder.setNeutralButton("Report", (d, w) -> {
+                        reportToServer(url);
+                        fetchReportCount(url);
+                    });
+                }
+
+                // Cancel always present
+                builder.setNegativeButton("Cancel",
+                        (d, w) -> txtResult.setText("Action cancelled."));
+
+                builder.show();
 
             } else {
                 txtResult.setText("Not a valid UPI or web URL:\n" + url);
             }
         });
 
-        // 🌐 Open Fraud Info page (optional)
+        // 🌐 Fraud info page button
         Button btnFraud = findViewById(R.id.btnOpenFraud);
         btnFraud.setOnClickListener(v ->
                 startActivity(new Intent(MainActivity.this, FraudWebActivity.class))
         );
     }
 
-    // 🧾 UPI QR Parsing
+    // 🧾 UPI Parsing
     private String parseUpiData(String upiString) {
         StringBuilder parsed = new StringBuilder("UPI QR Detected :\n\n");
         String[] parts = upiString.split("\\?");
@@ -135,12 +143,13 @@ public class MainActivity extends AppCompatActivity {
         return parsed.toString();
     }
 
-    // 🚨 Phishing Detection Rules
+    // 🚨 Suspicious Detection Rules
     private boolean isSuspiciousLink(String url) {
         url = url.toLowerCase();
         try {
             Uri uri = Uri.parse(url);
             String host = uri.getHost();
+
             if (host == null) return true;
             if (url.startsWith("http://")) return true;
 
@@ -152,7 +161,8 @@ public class MainActivity extends AppCompatActivity {
             if (host.chars().filter(ch -> ch == '-').count() > 3) return true;
             if (host.matches("\\d+\\.\\d+\\.\\d+\\.\\d+")) return true;
 
-            String[] badWords = {"free", "login", "verify", "update", "secure", "banking", "gift", "win", "bonus"};
+            String[] badWords = {"free", "login", "verify", "update", "secure",
+                    "banking", "gift", "win", "bonus"};
             for (String word : badWords)
                 if (url.contains(word)) return true;
 
@@ -166,56 +176,70 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-    // 🔍 QR Launcher
+    // 📷 QR Launcher
     @SuppressLint("SetTextI18n")
     private final androidx.activity.result.ActivityResultLauncher<ScanOptions> qrLauncher =
             registerForActivityResult(new ScanContract(), result -> {
-                if (result.getContents() != null) {
-                    String scannedData = result.getContents().trim();
-                    if (scannedData.startsWith("upi://pay")) {
-                        txtResult.setText(parseUpiData(scannedData));
-                    } else if (looksLikeUrl(scannedData)) {
+                if (result.getContents() == null) {
+                    Toast.makeText(this, "⚠️ QR Scan Failed.", Toast.LENGTH_LONG).show();
+                    return;
+                }
 
-                        // 🧠 ML + rule-based for scanned link
-                        boolean ruleSuspicious = isSuspiciousLink(scannedData);
-                        double mlScore = MLClassifier.predictProbability(scannedData);
-                        boolean mlSuspicious = mlScore >= 0.5;
-                        boolean suspicious = ruleSuspicious || mlSuspicious;
+                String scannedData = result.getContents().trim();
 
-                        String message = (suspicious ? "⚠️ Suspicious Link!\n" : "✅ Safe Link\n")
-                                + scannedData + "\n\nML Score: " + String.format("%.2f", mlScore);
+                if (scannedData.startsWith("upi://pay")) {
+                    txtResult.setText(parseUpiData(scannedData));
+                    return;
+                }
 
-                        txtResult.setText(message);
-                        fetchReportCount(scannedData);
+                if (looksLikeUrl(scannedData)) {
 
-                        new AlertDialog.Builder(this)
-                                .setTitle(suspicious ? "Suspicious Link" : "Open Link?")
-                                .setMessage(message + "\n\nDo you want to open it?")
-                                .setPositiveButton("Open", (d, w) -> {
-                                    String urlToOpen = scannedData.startsWith("http") ? scannedData : "https://" + scannedData;
-                                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(urlToOpen)));
-                                })
-                                .setNeutralButton("Report", (d, w) -> {
-                                    reportToServer(scannedData);
-                                    fetchReportCount(scannedData);
-                                })
-                                .setNegativeButton("Cancel", (d, w) -> txtResult.setText("Link scan cancelled."))
-                                .show();
-                    } else {
-                        txtResult.setText("Scanned Text:\n\n" + scannedData);
+                    boolean ruleSuspicious = isSuspiciousLink(scannedData);
+                    double mlScore = MLClassifier.predictProbability(scannedData);
+                    boolean mlSuspicious = mlScore >= 0.5;
+                    boolean suspicious = ruleSuspicious || mlSuspicious;
+
+                    String message = (suspicious ? "⚠️ Suspicious Link!\n" : "✅ Safe Link\n")
+                            + scannedData + "\n\nML Score: " + String.format("%.2f", mlScore);
+
+                    txtResult.setText(message);
+                    fetchReportCount(scannedData);
+
+                    // ⚠️ FIXED REPORT BUTTON HERE ALSO
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                            .setTitle(suspicious ? "Suspicious Link" : "Open Link?")
+                            .setMessage(message + "\n\nDo you want to open it?");
+
+                    builder.setPositiveButton("Open", (d, w) -> {
+                        String urlToOpen = scannedData.startsWith("http") ? scannedData :
+                                "https://" + scannedData;
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(urlToOpen)));
+                    });
+
+                    if (suspicious) {
+                        builder.setNeutralButton("Report", (d, w) -> {
+                            reportToServer(scannedData);
+                            fetchReportCount(scannedData);
+                        });
                     }
+
+                    builder.setNegativeButton("Cancel",
+                            (d, w) -> txtResult.setText("Link scan cancelled."));
+
+                    builder.show();
                 } else {
-                    Toast.makeText(this, "⚠️ QR Scan Failed. Try again.", Toast.LENGTH_LONG).show();
+                    txtResult.setText("Scanned Text:\n\n" + scannedData);
                 }
             });
 
-    // 🌐 Looks like URL?
+    // 🌐 URL Pattern Check
     private boolean looksLikeUrl(String data) {
         data = data.toLowerCase();
         if (data.startsWith("http://") || data.startsWith("https://")) return true;
         if (data.contains(".") && !data.contains(" ")) return true;
         String[] shorteners = {"bit.ly", "tinyurl.com", "goo.gl", "t.co"};
-        for (String s : shorteners) if (data.contains(s)) return true;
+        for (String s : shorteners)
+            if (data.contains(s)) return true;
         return false;
     }
 
@@ -230,79 +254,64 @@ public class MainActivity extends AppCompatActivity {
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                 conn.setRequestProperty("Accept", "application/json");
                 conn.setDoOutput(true);
-                conn.setDoInput(true);
 
                 String jsonBody = "{\"url\":\"" + urlToReport + "\"}";
-                byte[] out = jsonBody.getBytes("UTF-8");
-
                 OutputStream os = conn.getOutputStream();
-                os.write(out);
+                os.write(jsonBody.getBytes());
                 os.flush();
                 os.close();
 
-                int responseCode = conn.getResponseCode();
-
+                int code = conn.getResponseCode();
                 runOnUiThread(() -> {
-                    if (responseCode == 200) {
+                    if (code == 200)
                         Toast.makeText(this, "Reported successfully!", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(this, "Report failed (code " + responseCode + ")", Toast.LENGTH_SHORT).show();
-                    }
+                    else
+                        Toast.makeText(this, "Report failed (code " + code + ")", Toast.LENGTH_SHORT).show();
                 });
 
             } catch (Exception e) {
                 runOnUiThread(() ->
-                        Toast.makeText(this, "Report failed: " + e.toString(), Toast.LENGTH_LONG).show());
-            } finally {
-                if (conn != null) conn.disconnect();
+                        Toast.makeText(this, "Report failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         }).start();
     }
 
-    // 🔁 GET /report?url=...
+    // 🔁 GET /report
     private void fetchReportCount(String urlToCheck) {
         new Thread(() -> {
             try {
                 String endpoint = BACKEND_BASE + "/report?url=" +
                         URLEncoder.encode(urlToCheck, "UTF-8");
+
                 HttpURLConnection conn = (HttpURLConnection) new URL(endpoint).openConnection();
                 conn.setRequestMethod("GET");
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(5000);
 
                 Scanner sc = new Scanner(conn.getInputStream()).useDelimiter("\\A");
                 String response = sc.hasNext() ? sc.next() : "";
-                conn.disconnect();
 
                 int count = 0;
-                try {
-                    int idx = response.indexOf("\"count\":");
-                    if (idx != -1) {
-                        String num = response.substring(idx + 8).replaceAll("[^0-9]", "");
-                        count = Integer.parseInt(num);
-                    }
-                } catch (Exception ignored) {}
+                int idx = response.indexOf("\"count\":");
+                if (idx != -1) {
+                    String num = response.substring(idx + 8).replaceAll("[^0-9]", "");
+                    if (!num.isEmpty()) count = Integer.parseInt(num);
+                }
 
                 int finalCount = count;
                 runOnUiThread(() -> {
-                    String existing = txtResult.getText().toString();
-                    String newText = existing.replaceAll("\\n?\\n?🧾.*", "");
+                    String text = txtResult.getText().toString();
+                    text = text.replaceAll("\\n?\\n?🧾.*", "");
 
-                    if (finalCount == 0) {
-                        newText += "\n\n🧾 No reports yet";
-                    } else if (finalCount == 1) {
-                        newText += "\n\n🧾 Reported 1 time";
-                    } else {
-                        newText += "\n\n🧾 Reported " + finalCount + " times";
-                    }
+                    if (finalCount == 0)
+                        text += "\n\n🧾 No reports yet";
+                    else if (finalCount == 1)
+                        text += "\n\n🧾 Reported 1 time";
+                    else
+                        text += "\n\n🧾 Reported " + finalCount + " times";
 
-                    txtResult.setText(newText);
+                    txtResult.setText(text);
                 });
 
-            } catch (Exception e) {
-                runOnUiThread(() ->
-                        Toast.makeText(this, "Couldn't fetch report count", Toast.LENGTH_SHORT).show());
-            }
+            } catch (Exception ignored) {}
         }).start();
     }
 }
